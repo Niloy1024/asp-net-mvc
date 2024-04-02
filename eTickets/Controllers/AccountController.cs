@@ -2,12 +2,15 @@
 using eTickets.Data.Static;
 using eTickets.Data.ViewModels;
 using eTickets.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace eTickets.Controllers
@@ -17,12 +20,15 @@ namespace eTickets.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly AppDbContext _context;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public AccountController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, AppDbContext context)
+
+        public AccountController(IHttpContextAccessor httpContextAccessor,UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, AppDbContext context)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _context = context;
+            _httpContextAccessor = httpContextAccessor;
         }
 
 
@@ -39,6 +45,7 @@ namespace eTickets.Controllers
         public async Task<IActionResult> Login(LoginVM loginVM)
         {
             if (!ModelState.IsValid) return View(loginVM);
+            
 
             var user = await _userManager.FindByEmailAsync(loginVM.EmailAddress);
             if(user != null)
@@ -46,8 +53,14 @@ namespace eTickets.Controllers
                 var passwordCheck = await _userManager.CheckPasswordAsync(user, loginVM.Password);
                 if (passwordCheck)
                 {
-                    var result = await _signInManager.PasswordSignInAsync(user, loginVM.Password, false, false);
-                    if (result.Succeeded)
+                    var identity = new ClaimsIdentity();
+                    identity.AddClaim( new Claim(ClaimTypes.NameIdentifier, user.Id ));
+                    identity.AddClaim( new Claim(ClaimTypes.Email, user.Email ));
+                    identity.AddClaim( new Claim(ClaimTypes.Role, "Admin" ));
+                    var principal = new ClaimsPrincipal(identity);
+                    await _httpContextAccessor.HttpContext.SignInAsync(principal);
+
+                    if ( true )
                     {
                         return RedirectToAction("Index", "Movies");
                     }

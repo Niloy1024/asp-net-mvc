@@ -52,6 +52,7 @@ namespace eTickets
             services.AddAuthentication(options => 
             {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.RequireAuthenticatedSignIn = false;
             });
 
             services.AddControllersWithViews();
